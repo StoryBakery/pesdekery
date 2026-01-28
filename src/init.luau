@@ -12,6 +12,9 @@ local function printUsage()
 	print("Options:")
 	print("  -h, --help   Show this help.")
 	print("")
+	print("Behavior:")
+	print("  Runs pesde install when revisions change.")
+	print("")
 	print("Environment:")
 	print("  GITHUB_TOKEN / GH_TOKEN   GitHub API token for higher rate limits.")
 end
@@ -110,6 +113,21 @@ end
 
 if #result.Errors > 0 then
 	Process.exit(1)
+end
+
+if result.Changed then
+	print("[Install] Running pesde install.")
+	local installResult = Process.exec("pesde", { "install" })
+	if installResult.stdout ~= "" then
+		print(installResult.stdout)
+	end
+	if installResult.stderr ~= "" then
+		print(installResult.stderr)
+	end
+	if not installResult.ok or installResult.code ~= 0 then
+		print("[Error] pesde install failed.")
+		Process.exit(1)
+	end
 end
 
 Process.exit(0)

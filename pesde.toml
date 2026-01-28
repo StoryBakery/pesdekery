@@ -1,5 +1,5 @@
 name = "storybakery/pesde_gitrev"
-version = "0.1.0"
+version = "0.1.1"
 repository = "https://github.com/StoryBakery/pesde-gitrev"
 license = "MIT"
 includes = ["pesde.toml", "src/**"]
@@ -10,4 +10,3 @@ bin = "src/init.luau"
 
 [indices]
 default = "https://github.com/pesde-pkg/index"
-
