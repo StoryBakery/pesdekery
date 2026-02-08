@@ -1,5 +1,5 @@
 --[[
-	pesde.toml의 GitHub 의존성 rev를 최신 커밋으로 갱신하는 스크립트입니다.
+	pesde.toml의 StoryBakery 의존성 업데이트와 override 추가를 수행하는 스크립트입니다.
 ]]
 
 local Process = require("@lune/process")
@@ -13,7 +13,7 @@ local function printUsage()
 	print("  -h, --help   Show this help.")
 	print("")
 	print("Behavior:")
-	print("  Runs pesde install when revisions change.")
+	print("  Runs pesde install when dependencies or overrides change.")
 	print("")
 	print("Environment:")
 	print("  GITHUB_TOKEN / GH_TOKEN   GitHub API token for higher rate limits.")
@@ -103,11 +103,31 @@ for _, errorInfo in result.Errors do
 	end
 end
 
-if #result.Updated == 0 and #result.Errors == 0 then
-	if result.GitHubEntries == 0 then
-		print("[Info] No GitHub dependencies with rev were found.")
+if #result.AddedOverrides > 0 then
+	print(`[Override] Added {#result.AddedOverrides} StoryBakery override entries.`)
+end
+
+if result.LockfileStatus ~= nil then
+	if result.LockfileStatus.Code == "MissingLockfile" then
+		print(`[Info] Lockfile "{result.LockfileStatus.Path}" not found. Override generation skipped.`)
+	elseif result.LockfileStatus.Code == "LockfileReadFailed" then
+		print(`[Info] Failed to read lockfile "{result.LockfileStatus.Path}": {result.LockfileStatus.Detail}`)
+	elseif result.LockfileStatus.Code == "LockfileDecodeFailed" then
+		print(`[Info] Failed to decode lockfile "{result.LockfileStatus.Path}": {result.LockfileStatus.Detail}`)
 	else
-		print("[Info] No GitHub dependencies needed an update.")
+		print(`[Info] Lockfile "{result.LockfilePath}" has unsupported graph format.`)
+	end
+elseif result.HasStoryAlias and #result.OverrideCandidates == 0 then
+	print(`[Info] No StoryBakery override paths were found in "{result.LockfilePath}".`)
+elseif not result.HasStoryAlias then
+	print("[Info] No StoryBakery-owned dependencies were found.")
+end
+
+if #result.Updated == 0 and #result.Errors == 0 then
+	if result.ManagedGitHubEntries == 0 then
+		print("[Info] No StoryBakery GitHub dependencies with rev were found.")
+	else
+		print("[Info] No StoryBakery GitHub dependencies needed a rev update.")
 	end
 end
 
@@ -117,7 +137,16 @@ end
 
 if result.Changed then
 	print("[Install] Running pesde install.")
-	local installResult = Process.exec("pesde", { "install" })
+	local okInstall, installResultOrErr = pcall(function()
+		return Process.exec("pesde", { "install" })
+	end)
+	if not okInstall then
+		local detail = tostring(installResultOrErr)
+		detail = detail:match("^[^\n]+") or detail
+		print(`[Error] Failed to run pesde install: {detail}`)
+		Process.exit(1)
+	end
+	local installResult = installResultOrErr
 	if installResult.stdout ~= "" then
 		print(installResult.stdout)
 	end
