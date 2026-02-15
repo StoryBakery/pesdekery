@@ -35,3 +35,4 @@ wally.lock
 /node_modules
 /build
 
+tmp
