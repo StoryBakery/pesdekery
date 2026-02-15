@@ -7,7 +7,7 @@ local Serde = require("@lune/serde")
 
 local DEFAULT_HEADERS = {
 	Accept = "application/vnd.github+json",
-	["User-Agent"] = "pesde-gitrev",
+	["User-Agent"] = "pesdekery",
 	["X-GitHub-Api-Version"] = "2022-11-28",
 }
 

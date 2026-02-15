@@ -7,8 +7,9 @@ local Process = require("@lune/process")
 local Stdio = require("@lune/stdio")
 
 local PesdeTomlUpdater = require("@self/modules/PesdeTomlUpdater")
+local RobloxPackagesPathFixer = require("@self/modules/RobloxPackagesPathFixer")
 
-local AUTH_FILE_NAME = ".pesde-gitrev-token"
+local AUTH_FILE_NAME = ".pesdekery-token"
 local GITHUB_TOKEN_URL = "https://github.com/settings/personal-access-tokens/new"
 
 local function trim(value: string): string
@@ -17,8 +18,8 @@ end
 
 local function printUsage()
 	print("Usage:")
-	print("  pesde-gitrev [pesde.toml path]")
-	print("  pesde-gitrev auth login [token]")
+	print("  pesdekery [pesde.toml path]")
+	print("  pesdekery auth login [token]")
 	print("")
 	print("Options:")
 	print("  -h, --help   Show this help.")
@@ -205,13 +206,13 @@ local function runAuthCommand(args: { string }, authFilePath: string?): boolean
 	local subCommand = args[2]
 	if subCommand ~= "login" then
 		print(`[Error] Unknown auth command "{tostring(subCommand)}".`)
-		print("Usage: pesde-gitrev auth login [token]")
+		print("Usage: pesdekery auth login [token]")
 		Process.exit(1)
 	end
 
 	if #args > 3 then
 		print("[Error] Too many arguments for auth login.")
-		print("Usage: pesde-gitrev auth login [token]")
+		print("Usage: pesdekery auth login [token]")
 		Process.exit(1)
 	end
 
@@ -232,7 +233,7 @@ local function runAuthCommand(args: { string }, authFilePath: string?): boolean
 			print("[Error] Empty token is not allowed.")
 		elseif authResult.Code == "PromptFailed" then
 			print("[Error] Interactive auth is unavailable in this terminal.")
-			print("[Error] Use: pesde-gitrev auth login <token>")
+			print("[Error] Use: pesdekery auth login <token>")
 		elseif authResult.Code == "AuthWriteFailed" then
 			print(`[Error] Failed to save auth token to "{authResult.Path}": {authResult.Detail}`)
 		else
@@ -249,6 +250,36 @@ local function runAuthCommand(args: { string }, authFilePath: string?): boolean
 
 	Process.exit(0)
 	return true
+end
+
+local function runRobloxPackagesPathFix(path: string)
+	local okFix, fixResultOrErr = RobloxPackagesPathFixer.Fix({
+		Path = path,
+	})
+	if not okFix then
+		if fixResultOrErr.Code == "ReadDirFailed" then
+			print(
+				`[Warn] Failed to scan generated roblox packages at "{fixResultOrErr.Path}": {fixResultOrErr.Detail}`
+			)
+		elseif fixResultOrErr.Code == "ReadFileFailed" then
+			print(`[Warn] Failed to read generated wrapper "{fixResultOrErr.Path}": {fixResultOrErr.Detail}`)
+		elseif fixResultOrErr.Code == "RemoveFileFailed" then
+			print(
+				`[Warn] Failed to rewrite generated wrapper "{fixResultOrErr.Path}": {fixResultOrErr.Detail}`
+			)
+		elseif fixResultOrErr.Code == "WriteFileFailed" then
+			print(
+				`[Warn] Failed to fix generated wrapper "{fixResultOrErr.Path}": {fixResultOrErr.Detail}`
+			)
+		else
+			print("[Warn] Failed to apply generated roblox package path fixes.")
+		end
+		return
+	end
+
+	if fixResultOrErr.FixedCount > 0 then
+		print(`[Fix] Updated {fixResultOrErr.FixedCount} generated wrapper path(s).`)
+	end
 end
 
 local authFilePath = getAuthFilePath()
@@ -404,5 +435,7 @@ if result.Changed then
 		Process.exit(1)
 	end
 end
+
+runRobloxPackagesPathFix(options.Path)
 
 Process.exit(0)

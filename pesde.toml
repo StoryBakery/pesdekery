@@ -1,6 +1,6 @@
-name = "storybakery/pesde_gitrev"
-version = "0.1.6"
-repository = "https://github.com/StoryBakery/pesde-gitrev"
+name = "storybakery/pesdekery"
+version = "0.0.0"
+repository = "https://github.com/StoryBakery/pesdekery"
 license = "MIT"
 includes = ["pesde.toml", "src/**"]
 
