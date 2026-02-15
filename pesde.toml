@@ -1,5 +1,5 @@
 name = "storybakery/pesde_gitrev"
-version = "0.1.5"
+version = "0.1.6"
 repository = "https://github.com/StoryBakery/pesde-gitrev"
 license = "MIT"
 includes = ["pesde.toml", "src/**"]

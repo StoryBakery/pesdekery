@@ -98,19 +98,19 @@ local function isDependencySection(sectionName: string?): boolean
 	if sectionName == "dependencies" then
 		return true
 	end
-	if sectionName == "dev-dependencies" then
+	if sectionName == "dev_dependencies" then
 		return true
 	end
-	if sectionName == "peer-dependencies" then
+	if sectionName == "peer_dependencies" then
 		return true
 	end
 	if sectionName:match("%.dependencies$") then
 		return true
 	end
-	if sectionName:match("%.dev%-dependencies$") then
+	if sectionName:match("%.dev_dependencies$") then
 		return true
 	end
-	if sectionName:match("%.peer%-dependencies$") then
+	if sectionName:match("%.peer_dependencies$") then
 		return true
 	end
 
@@ -174,14 +174,6 @@ local function copyArray(values: { string }): { string }
 	return copied
 end
 
-local function copySet(valueSet)
-	local copied = {}
-	for value, enabled in valueSet do
-		copied[value] = enabled
-	end
-	return copied
-end
-
 local function getPackageIdFromTuple(value): string?
 	if type(value) ~= "table" then
 		return nil
@@ -199,22 +191,27 @@ local function getPackageIdentity(packageId: string): string?
 	if packageId:match("^pesde:") ~= nil then
 		local name = packageId:match("^pesde:[^:]+:([^@]+)@")
 		if name ~= nil then
-			return `pesde:{name}`
+			return name:lower()
 		end
 	end
 
 	if packageId:match("^wally:") ~= nil then
 		local name = packageId:match("^wally:[^:]+:([^@]+)@")
 		if name ~= nil then
-			return `wally:{name}`
+			return name:lower()
 		end
 	end
 
 	if packageId:match("^git:") ~= nil then
 		local repo = packageId:match("^git:([^:]+):")
 		if repo ~= nil then
-			return `git:{repo}`
+			return repo:lower()
 		end
+	end
+
+	local name = packageId:match("^([^@]+)@")
+	if name ~= nil then
+		return name:lower()
 	end
 
 	return nil
@@ -342,11 +339,11 @@ local function addAliasIdentity(
 end
 
 local function getFormat2NodeIdentity(nodeId: string): string?
-	local identity = nodeId:match("^(.-)@")
+	local identity = getPackageIdentity(nodeId)
 	if identity ~= nil then
 		return identity
 	end
-	return nodeId
+	return nodeId:lower()
 end
 
 local function makeOverrideCandidates(overrideByPath): { { Path: string, Alias: string } }
@@ -423,7 +420,11 @@ local function buildOverrideCandidatesFromFormat3(params)
 							if storyAliasesByLower[aliasLower] and dependencyPackageId ~= nil then
 								local identity = getPackageIdentity(dependencyPackageId)
 								local expectedIdentitySet = storyAliasIdentitiesByLower[aliasLower]
-								if identity ~= nil and expectedIdentitySet ~= nil and expectedIdentitySet[identity] then
+								if
+									identity ~= nil
+									and expectedIdentitySet ~= nil
+									and expectedIdentitySet[identity]
+								then
 									local path = table.concat(nextAliases, ">")
 									if overrideByPath[path] == nil then
 										overrideByPath[path] = alias
@@ -431,10 +432,11 @@ local function buildOverrideCandidatesFromFormat3(params)
 								end
 							end
 
-							if dependencyPackageId ~= nil
+							if
+								dependencyPackageId ~= nil
 								and not item.VisitedPackageIds[dependencyPackageId]
 							then
-								local visitedPackageIds = copySet(item.VisitedPackageIds)
+								local visitedPackageIds = table.clone(item.VisitedPackageIds)
 								visitedPackageIds[dependencyPackageId] = true
 								table.insert(queue, {
 									PackageId = dependencyPackageId,
@@ -507,7 +509,11 @@ local function buildOverrideCandidatesFromFormat2(params)
 							if storyAliasesByLower[aliasLower] and dependencyPackageId ~= nil then
 								local identity = getFormat2NodeIdentity(dependencyPackageId)
 								local expectedIdentitySet = storyAliasIdentitiesByLower[aliasLower]
-								if identity ~= nil and expectedIdentitySet ~= nil and expectedIdentitySet[identity] then
+								if
+									identity ~= nil
+									and expectedIdentitySet ~= nil
+									and expectedIdentitySet[identity]
+								then
 									local path = table.concat(nextAliases, ">")
 									if overrideByPath[path] == nil then
 										overrideByPath[path] = alias
@@ -515,10 +521,11 @@ local function buildOverrideCandidatesFromFormat2(params)
 								end
 							end
 
-							if dependencyPackageId ~= nil
+							if
+								dependencyPackageId ~= nil
 								and not item.VisitedPackageIds[dependencyPackageId]
 							then
-								local visitedPackageIds = copySet(item.VisitedPackageIds)
+								local visitedPackageIds = table.clone(item.VisitedPackageIds)
 								visitedPackageIds[dependencyPackageId] = true
 								table.insert(queue, {
 									PackageId = dependencyPackageId,
