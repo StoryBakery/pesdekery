@@ -6,10 +6,10 @@
 
 # 목표
 
-- StoryBakery git 의존성의 버전 통일을 자동화합니다.
-- `pesde` 업데이트를 따라가되, `pesde`가 제공하지 않는 보정 단계를 확장합니다.
+- `pesde`가 제공하는 명령을 그대로 실행할 수 있게 합니다.
+- StoryBakery 정책이 필요한 지점에서만 후처리를 추가합니다.
 - `rokit.toml`로 설치 가능한 단일 CLI 배포 경로를 제공합니다.
-- 같은 명령으로 로컬/CI에서 동일한 결과를 재현합니다.
+- 같은 명령으로 로컬과 CI에서 동일한 결과를 재현합니다.
 
 # 비목표
 
@@ -27,10 +27,10 @@
 # 아키텍처-구성
 
 1. CLI-레이어.
-`pesdekery update`, `pesdekery add`, `pesdekery install` 같은 사용자 명령을 파싱합니다.
+`pesdekery <pesde-command...>` 입력을 파싱하고 `pesde`로 그대로 전달합니다.
 
 2. 실행-오케스트레이터.
-명령 목적에 따라 `pesde add/update/install` 순서를 결정하고 실행합니다.
+전달 명령 실행 뒤 StoryBakery 후처리 필요 여부를 판정합니다.
 
 3. toml-업데이터.
 StoryBakery 정책에 따라 `pesde.toml` 의존성 선언을 정규화합니다.
@@ -45,34 +45,35 @@ StoryBakery 정책에 따라 `pesde.toml` 의존성 선언을 정규화합니다
 
 # 명령-설계
 
-## pesdekery-update
+## pesdekery-sync
+
+`pesdekery sync [pesde.toml path]`는 기존 `pesde-gitrev` 동작을 수행합니다.
 
 1. `pesde.toml`의 StoryBakery 대상 의존성 선언을 정책대로 갱신합니다.
-2. `pesde update` 또는 `pesde install`을 실행해 lock과 설치 결과를 동기화합니다.
+2. 변경이 있으면 `pesde install`로 lock과 설치 결과를 동기화합니다.
 3. 설치 생성물 경로 보정기를 실행합니다.
 4. 변경 요약을 출력합니다.
 
-## pesdekery-add
+## pesdekery-패스스루
 
-1. 사용자 입력 패키지를 `pesde add`로 추가합니다.
-2. StoryBakery 정책 대상이면 선언 포맷을 정규화합니다.
-3. 설치 및 경로 보정을 연속 수행합니다.
+`pesdekery <pesde-command...>`는 인자를 그대로 `pesde`에 전달합니다.
 
-## pesdekery-install
+- `add`, `install`, `remove`, `update`가 성공하면 `pesdekery sync`를 자동으로 1회 추가 실행합니다.
+- 그 외 명령은 `pesde` 실행 결과만 전달합니다.
 
-1. 현재 `pesde.toml`/lock 상태로 `pesde install`을 실행합니다.
-2. 설치 결과에 대해 경로 보정만 수행합니다.
+이 구조로 `pesde`의 전체 명령면을 유지하면서, 의존성 변경 지점에는 StoryBakery 정책을 자동 적용합니다.
 
 # pesde-연동-정책
 
 - lock 생성과 검증은 항상 `pesde`에 위임합니다.
 - `pesde.toml`을 수정한 뒤에는 반드시 `pesde install` 또는 `pesde update`를 같은 실행 흐름에서 즉시 수행합니다.
-- `toml`/lock 불일치 상태에서 alias 실행이 실패하는 문제를 회피하기 위해, `pesdekery`는 `rokit` 설치 바이너리로 직접 실행하는 것을 기본으로 둡니다.
+- `toml`과 lock 불일치 상태에서 alias 실행이 실패하는 문제를 회피하기 위해, `pesdekery`는 `rokit` 설치 바이너리로 직접 실행하는 것을 기본으로 둡니다.
 
 # 버전-정책
 
+- `pesdekery` 패키지 버전은 `0.0.1`부터 시작합니다.
+- 초기 단계는 `0.0.x`에서 빠르게 반복하며 래퍼 안정성을 올립니다.
 - StoryBakery git 의존성은 정책상 최신 커밋 또는 정책 버전으로 수렴시킵니다.
-- 단순 rev 교체만으로 설치 결과가 바뀌지 않는 경우를 대비해, `pesde.toml` 버전 필드도 정책에 따라 같이 갱신합니다.
 - 최종 설치 상태의 기준은 lock과 생성물 보정 완료 결과입니다.
 
 # 배포-정책
@@ -84,12 +85,12 @@ StoryBakery 정책에 따라 `pesde.toml` 의존성 선언을 정규화합니다
 # 커뮤니티-관점
 
 - 패키지 매니저를 대체하지 않고 래핑하는 방식은 일반적인 운영 패턴입니다.
-- 해석기/lock 생성은 원도구에 맡기고 정책 보정만 확장하는 구조가 유지보수 비용을 낮춥니다.
+- 해석기와 lock 생성은 원도구에 맡기고 정책 보정만 확장하는 구조가 유지보수 비용을 낮춥니다.
 - 따라서 `pesdekery` 분리 목적은 타당하고, 팀 공통 환경 통일 목적과도 일치합니다.
 
 # 마이그레이션-단계
 
-1. 기존 `pesde-gitrev`의 핵심 기능을 `pesdekery update`로 이식합니다.
-2. 경로 보정기를 `pesdekery install` 공통 후처리로 고정합니다.
+1. 기존 `pesde-gitrev` 핵심 동작을 `pesdekery sync`로 유지합니다.
+2. 저장소 실행 명령을 `pesde run ...`에서 `pesdekery <pesde-command...>`로 전환합니다.
 3. `rokit` 설치 문서와 최소 사용 예시를 추가합니다.
-4. 저장소별 도입 시 `pesde run` 경로 대신 `pesdekery` 직접 실행으로 전환합니다.
+4. 릴리즈 자동화 워크플로를 추가해 태그마다 바이너리를 배포합니다.

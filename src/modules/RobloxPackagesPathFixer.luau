@@ -304,14 +304,14 @@ end
 
 local function collectAllWrapperPaths(params): ({ string }?, any?)
 	local robloxPackagesPath = params.RobloxPackagesPath
-	local pesdePath = params.PesdePath
+	local pesdeStorePath = params.PesdeStorePath
 
 	local rootWrapperPaths, rootWrapperPathsErr = collectRootWrapperPaths(robloxPackagesPath)
 	if rootWrapperPathsErr ~= nil then
 		return nil, rootWrapperPathsErr
 	end
 
-	local nestedWrapperPaths, nestedWrapperPathsErr = collectNestedWrapperPaths(pesdePath)
+	local nestedWrapperPaths, nestedWrapperPathsErr = collectNestedWrapperPaths(pesdeStorePath)
 	if nestedWrapperPathsErr ~= nil then
 		return nil, nestedWrapperPathsErr
 	end
@@ -365,7 +365,7 @@ end
 local function fixWrapperPath(params): (string, boolean)
 	local content = params.Content
 	local latestTargetsByToken = params.LatestTargetsByToken
-	local pesdePath = params.PesdePath
+	local pesdeStorePath = params.PesdeStorePath
 
 	local oldRequirePath = getFirstRequirePath(content)
 	if oldRequirePath == nil then
@@ -378,7 +378,7 @@ local function fixWrapperPath(params): (string, boolean)
 	end
 
 	local target = latestTargetsByToken[token]
-	if target == nil or not hasTargetDirectory(pesdePath, target) then
+	if target == nil or not hasTargetDirectory(pesdeStorePath, target) then
 		return content, false
 	end
 
@@ -396,9 +396,9 @@ local RobloxPackagesPathFixer = {}
 function RobloxPackagesPathFixer.Fix(params)
 	local pesdeTomlPath = params.Path
 	local robloxPackagesPath = getSiblingPath(pesdeTomlPath, "roblox_packages")
-	local pesdePath = joinPath(robloxPackagesPath, ".pesde")
+	local pesdeStorePath = joinPath(robloxPackagesPath, ".pesde")
 
-	if not FileSystem.isDir(robloxPackagesPath) or not FileSystem.isDir(pesdePath) then
+	if not FileSystem.isDir(robloxPackagesPath) or not FileSystem.isDir(pesdeStorePath) then
 		return true,
 			{
 				ScannedCount = 0,
@@ -407,14 +407,14 @@ function RobloxPackagesPathFixer.Fix(params)
 			}
 	end
 
-	local latestTargetsByToken, latestTargetsErr = collectLatestTargetsByToken(pesdePath)
+	local latestTargetsByToken, latestTargetsErr = collectLatestTargetsByToken(pesdeStorePath)
 	if latestTargetsErr ~= nil then
 		return false, latestTargetsErr
 	end
 
 	local wrapperPaths, wrapperPathsErr = collectAllWrapperPaths({
 		RobloxPackagesPath = robloxPackagesPath,
-		PesdePath = pesdePath,
+		PesdeStorePath = pesdeStorePath,
 	})
 	if wrapperPathsErr ~= nil then
 		return false, wrapperPathsErr
@@ -430,7 +430,7 @@ function RobloxPackagesPathFixer.Fix(params)
 		local updatedContent, changed = fixWrapperPath({
 			Content = contentOrErr,
 			LatestTargetsByToken = latestTargetsByToken,
-			PesdePath = pesdePath,
+			PesdeStorePath = pesdeStorePath,
 		})
 
 		if changed then
